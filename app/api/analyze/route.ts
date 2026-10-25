@@ -4,9 +4,20 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.SARVAM_API_KEY || "";
 
   try {
-    const formData = await req.formData();
-    const audioFile = formData.get("audio") as Blob | null;
-    const textOverride = formData.get("text") as string | null;
+    let audioFile: Blob | null = null;
+    let textOverride: string | null = null;
+
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const jsonBody = await req.json().catch(() => ({}));
+      textOverride = jsonBody.text || jsonBody.transcript || null;
+    } else {
+      const formData = await req.formData().catch(() => null);
+      if (formData) {
+        audioFile = formData.get("audio") as Blob | null;
+        textOverride = (formData.get("text") as string | null) || (formData.get("transcript") as string | null);
+      }
+    }
 
     let transcript = textOverride || "";
 
