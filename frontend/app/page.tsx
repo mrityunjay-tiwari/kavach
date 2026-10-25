@@ -3,7 +3,6 @@
 import React, { useState, useRef } from "react";
 import {
   ShieldAlert,
-  ShieldCheck,
   Play,
   Pause,
   AlertTriangle,
@@ -23,8 +22,7 @@ import {
   Headphones,
   CheckCircle2,
   EyeOff,
-  Settings2,
-  Database
+  Settings2
 } from "lucide-react";
 
 interface ScamScenario {
@@ -32,115 +30,107 @@ interface ScamScenario {
   name: string;
   category: string;
   caller: string;
-  is_saved_contact: boolean;
+  scammer_role: string;
   threat_score: number;
-  targeted_vulnerability: string;
+  simple_explanation: string; // Plain Hindi explanation for common citizens
   transcript: string;
-  audio_url: string;
+  scam_audio_url: string;
   whisper_advice: string;
   honeypot_dialogue: string;
   detected_vectors: string[];
-  sensitive_data_targeted: string[];
 }
 
 const FINANCIAL_SCAM_TAXONOMY: Record<string, ScamScenario> = {
   kyc_block: {
     id: "kyc_block",
-    name: "1. Bank KYC Account Freeze",
-    category: "Banking Phishing",
-    caller: "+91 91234-88219 [UNSAVED: UNKNOWN NUMBER]",
-    is_saved_contact: false,
+    name: "1. बैंक खाता / KYC बंद होने का डर",
+    category: "Banking Fraud",
+    caller: "+91 91234-88219 [अज्ञात नंबर / अनसेव्ड]",
+    scammer_role: "नकली बैंक मैनेजर (SBI / PNB)",
     threat_score: 96,
-    targeted_vulnerability: "Fear of bank account suspension & loss of pension/savings",
+    simple_explanation: "कॉलर आपको डरा रहा है कि खाता बंद हो जाएगा और आपसे 6 अंकों का गुप्त OTP मांग रहा है।",
     transcript:
-      "नमस्ते सर, मैं भारतीय स्टेट बैंक के मुंबई हेड ऑफिस से सीनियर मैनेजर बोल रहा हूँ। आपके बैंक खाते का केवाईसी वेरीफिकेशन एक्सपायर हो गया है। अगर 24 घंटे में आधार पैन अपडेट नहीं हुआ तो आपका खाता और एटीएम कार्ड हमेशा के लिए ब्लॉक हो जाएगा। तुरंत आपके मोबाइल पर जो 6 अंकों का ओटीपी आया है वो मुझे बताइए ताकि मैं आपका खाता अनब्लॉक कर सकूं!",
-    audio_url: "/api/audio/warning.wav",
+      "नमस्ते सर, मैं भारतीय स्टेट बैंक के मुंबई हेड ऑफिस से सीनियर मैनेजर बोल रहा हूँ। आपके बैंक खाते का केवाईसी वेरीफिकेशन एक्सपायर हो गया है। अगर 24 घंटे में आधार पैन अपडेट नहीं हुआ तो आपका खाता और एटीएम कार्ड हमेशा के लिए ब्लॉक हो जाएगा। तुरंत आपके मोबाइल पर जो 6 अंकों का ओटीपी आया है वो मुझे बताइए ताकि मैं आपका खाता चालू रख सकूं!",
+    scam_audio_url: "/api/audio/scam_call.wav",
     whisper_advice:
-      "सावधान: बैंक कभी भी फोन पर OTP, पासवर्ड या CVV नहीं मांगता। OTP मत बताइए, आपका खाता पूरी तरह सुरक्षित है।",
+      "डरो मत! बैंक का असली कर्मचारी कभी भी फोन पर OTP, पासवर्ड या एटीएम पिन नहीं मांगता। फोन मत काटिए, बस OTP मत बताइए।",
     honeypot_dialogue:
-      "अरे मैनेजर साहब, हमारे पेंशन का खाता मत बंद कीजिए! हमारी आंखें कमजोर हैं, चश्मा ढूंढ रहे हैं। कौनसा मैसेज आया है धीरे-धीरे पढ़ के बताइए...",
+      "अरे मैनेजर साहब, हमारे पेंशन का खाता मत बंद कीजिए! हमारी आंखें कमजोर हैं, चश्मा ढूंढ रहे हैं। कौनसा मैसेज आया है धीरे-धीरे बताइए...",
     detected_vectors: [
-      "Fake Bank Authority (SBI Senior Manager)",
-      "Manufactured Emergency (Account block within 24h)",
-      "Active Credential Harvesting (6-digit OTP Solicitation)"
-    ],
-    sensitive_data_targeted: ["Banking OTP", "Debit Card PIN", "Aadhaar Card Linkage"]
+      "खुद को बैंक अधिकारी बताना",
+      "24 घंटे में खाता बंद करने की फर्जी धमकी",
+      "गोपनीय बैंक OTP की मांग करना"
+    ]
   },
   digital_arrest: {
     id: "digital_arrest",
-    name: "2. Digital Arrest & Police Coercion",
-    category: "Extortion / Impersonation",
-    caller: "+91 98201-94821 [UNSAVED: VOIP MUMBAI]",
-    is_saved_contact: false,
+    name: "2. 'डिजिटल अरेस्ट' और पुलिस की धमकी",
+    category: "Police Extortion",
+    caller: "+91 98201-94821 [इंटरनेट कॉल / मुंबई]",
+    scammer_role: "फर्जी पुलिस इंस्पेक्टर शिंदे",
     threat_score: 98,
-    targeted_vulnerability: "Fear of police raid, criminal arrest & societal shame",
+    simple_explanation: "कॉलर फर्जी पुलिस बनकर दावा कर रहा है कि आप 'डिजिटली अरेस्ट' हैं और पैसे ट्रांसफर करने को कह रहा है।",
     transcript:
       "मिस्टर वर्मा, मैं मुंबई साइबर क्राइम सेल से इंस्पेक्टर शिंदे बोल रहा हूँ। आपके आधार कार्ड से 4 करोड़ रुपये की मनी लॉन्ड्रिंग और ड्रग्स पार्सल का केस दर्ज हुआ है। आप इस समय डिजिटली अरेस्ट हो चुके हैं। तुरंत अपना वेबकैम ऑन रखिए और अपनी सारी बैंक डिटेल्स और बैलेंस आरबीआई के सेफ वॉल्ट अकाउंट में ट्रांसफर कीजिए जांच के लिए।",
-    audio_url: "/api/audio/scam_call.wav",
+    scam_audio_url: "/api/audio/scam_call.wav",
     whisper_advice:
-      "कानूनी चेतावनी: भारतीय कानून (BNSS) में 'डिजिटल अरेस्ट' नाम की कोई चीज नहीं है। पुलिस वीडियो कॉल पर अरेस्ट नहीं कर सकती। तुरंत कॉल काटें।",
+      "कानूनी सच: भारत के कानून में 'डिजिटल अरेस्ट' नाम की कोई चीज नहीं है। कोई भी पुलिस वीडियो कॉल पर अरेस्ट नहीं कर सकती और न ही पैसे मंगा सकती है। तुरंत कॉल काटें।",
     honeypot_dialogue:
-      "अरे साहब, हम तो बूढ़े आदमी हैं, जिंदगी में कभी थाना नहीं गए! बहुत डर लग रहा है। कौनसे बैंक खाते में पैसे भेजने हैं, धीरे-धीरे आईएफएससी कोड बताइए...",
+      "अरे साहब, हम तो बूढ़े आदमी हैं, जिंदगी में कभी थाना नहीं गए! बहुत डर लग रहा है। कौनसे बैंक खाते में पैसे भेजने हैं, धीरे-धीरे बताइए...",
     detected_vectors: [
-      "Law Enforcement Impersonation (Inspector Shinde)",
-      "Fabricated Legal Statute ('Digital Arrest' Fiction)",
-      "Forced Fund Transfer to Fraudulent Account"
-    ],
-    sensitive_data_targeted: ["Bank Balance", "RTGS/IMPS Transfer to Fraud Account"]
+      "फर्जी पुलिस अधिकारी बनना (CBI/पुलिस)",
+      "गैर-कानूनी 'डिजिटल अरेस्ट' की धमकी",
+      "सरकारी खाते के नाम पर पैसे की जबरन वसूली"
+    ]
   },
   lottery_kbc: {
     id: "lottery_kbc",
-    name: "3. KBC / PM-Scheme Lottery Scam",
-    category: "Advance-Fee Fraud",
-    caller: "+91 97712-40912 [UNSAVED: UNKNOWN MOBILE]",
-    is_saved_contact: false,
+    name: "3. 25 लाख की लॉटरी / सरकारी इनाम",
+    category: "Lottery Scam",
+    caller: "+91 97712-40912 [अज्ञात नंबर]",
+    scammer_role: "फर्जी KBC / योजना अधिकारी",
     threat_score: 91,
-    targeted_vulnerability: "Greed/Hope of life-changing money for financially underprivileged citizens",
+    simple_explanation: "कॉलर 25 लाख का लालच देकर टैक्स के नाम पर पहले 2,500 रुपये ऐंठने की कोशिश कर रहा है।",
     transcript:
       "बधाई हो सर! आपके मोबाइल नंबर पर प्रधानमंत्री जन-कल्याण योजना और केबीसी का 25 लाख रुपये का लकी ड्रा इनाम निकला है। यह चेक आपके घर भेजने के लिए गवर्नमेंट टैक्स और रजिस्ट्रेशन फीस के मात्र 2,500 रुपये तुरंत दिए गए यूपीआई नंबर पर ट्रांसफर कीजिए, आधे घंटे में 25 लाख आपके खाते में क्रेडिट हो जाएगा!",
-    audio_url: "/api/audio/scam_call.wav",
+    scam_audio_url: "/api/audio/scam_call.wav",
     whisper_advice:
-      "सतर्कता सलाह: किसी भी असली सरकारी योजना या लॉटरी के पैसे मिलने के लिए पहले पैसे नहीं देने पड़ते। यह 100% एडवांस-फी फ्रॉड है।",
+      "सच जानिए: किसी भी असली सरकारी योजना या लॉटरी का पैसा मिलने के लिए पहले अपनी जेब से पैसे नहीं देने होते। यह 100% फर्जीवाड़ा है।",
     honeypot_dialogue:
       "अरे भैया सचमुच 25 लाख निकला है क्या! हमारे पास तो अभी पैसे नहीं हैं। क्या आप 25 लाख में से ही 2,500 रुपये काट कर बाकी पैसा भेज सकते हैं?",
     detected_vectors: [
-      "Advance-Fee Fraud Pattern (Pay token fee to get prize)",
-      "Fake Government / Celebrity Endorsement (KBC / PM Yojana)",
-      "Urgent UPI Payment Request"
-    ],
-    sensitive_data_targeted: ["Upfront UPI Advance Fee", "UPI PIN Credential"]
+      "इनाम देने के नाम पर पहले पैसे मांगना",
+      "फर्जी सरकारी / केबीसी योजना का नाम लेना",
+      "तुरंत UPI से पैसे भेजने का दबाव बनाना"
+    ]
   },
   electricity_bill: {
     id: "electricity_bill",
-    name: "4. Electricity Bill Power-Cut APK",
-    category: "Utility Malware Phishing",
-    caller: "+91 94310-88124 [UNSAVED: UNKNOWN MOBILE]",
-    is_saved_contact: false,
+    name: "4. आज रात बिजली कटने की धमकी",
+    category: "Utility Phishing",
+    caller: "+91 94310-88124 [अज्ञात नंबर]",
+    scammer_role: "नकली बिजली विभाग कर्मचारी",
     threat_score: 93,
-    targeted_vulnerability: "Fear of sudden power outage disrupting home or small shop",
+    simple_explanation: "कॉलर आज रात बिजली काटने की धमकी देकर फोन पर 15 रुपये का फर्जी ऐप डाउनलोड करवा रहा है।",
     transcript:
       "प्रिय उपभोक्ता, आपकी बिजली का बिल अपडेट नहीं होने के कारण आज रात 9:30 बजे आपके घर का पावर कनेक्शन काट दिया जाएगा। तुरंत हमारे इलेक्ट्रिसिटी ऑफिसर से संपर्क करें या दिए गए लिंक से महावितरण सपोर्ट ऐप डाउनलोड करके 15 रुपये का पेंडिंग चार्ज भरें, नहीं तो पेनल्टी लगेगी।",
-    audio_url: "/api/audio/scam_call.wav",
+    scam_audio_url: "/api/audio/scam_call.wav",
     whisper_advice:
-      "सुरक्षा सलाह: बिजली विभाग कभी भी फोन पर APK ऐप डाउनलोड करने या निजी नंबर पर 15 रुपये भरने को नहीं कहता। लिंक पर क्लिक न करें।",
+      "सावधानी: बिजली विभाग कभी भी फोन पर ऐप डाउनलोड करने या निजी नंबर पर 15 रुपये भरने को नहीं कहता। लिंक पर कभी क्लिक न करें।",
     honeypot_dialogue:
       "सर हमारी दुकान की लाइट मत काटिए, सारा सामान खराब हो जाएगा! हम तुरंत पैसा भेज रहे हैं। बताइए कौनसा यूपीआई नंबर है आपका...",
     detected_vectors: [
-      "Fake Utility Official (Electricity Discom)",
-      "Artificial Deadline Pressure (Power cut tonight at 9:30 PM)",
-      "Malicious APK Screen-Share Link Trap"
-    ],
-    sensitive_data_targeted: ["Malicious APK Install", "Device SMS / Banking Credentials"]
+      "बिजली विभाग का फर्जी कर्मचारी बनना",
+      "रात 9:30 बजे बिजली काटने की झूठी धमकी",
+      "धोखे से मोबाइल में खतरनाक ऐप डलवाना"
+    ]
   }
 };
 
 export default function Home() {
   const [selectedScenarioKey, setSelectedScenarioKey] = useState<string>("kyc_block");
-  
-  // Privacy by Design Settings
-  const [privacySavedContactsOnly, setPrivacySavedContactsOnly] = useState<boolean>(true);
-  const [isAiListeningMuted, setIsAiListeningMuted] = useState<boolean>(false);
   const [showPrivacySettings, setShowPrivacySettings] = useState<boolean>(false);
+  const [isAiListeningMuted, setIsAiListeningMuted] = useState<boolean>(false);
 
   // Call & Audio Playback State
   const [isCallActive, setIsCallActive] = useState<boolean>(false);
@@ -209,12 +199,14 @@ export default function Home() {
     });
   };
 
+  // Play the SCAMMER'S voice when clicking "Play Fraud Call"
   const handleStartCall = () => {
     setIsAiListeningMuted(false);
     setIsCallActive(true);
     setCurrentTranscript(scenario.transcript);
     setCurrentThreatScore(scenario.threat_score);
-    playAudio(scenario.audio_url, "scam_call", scenario.transcript);
+    // Plays the incoming scam call audio
+    playAudio(scenario.scam_audio_url, "scam_caller", scenario.transcript);
   };
 
   const handleEndCall = () => {
@@ -297,21 +289,21 @@ export default function Home() {
   };
 
   const copyDossier = () => {
-    const report = `NATIONAL CYBER CRIME REPORTING PORTAL (1930) - FINANCIAL SCAM DOSSIER
-Generated autonomously by KAVACH (Powered by Sarvam AI Platform)
+    const report = `NATIONAL CYBER CRIME REPORTING PORTAL (1930) - FRAUD INCIDENT REPORT
+Autonomously Generated by KAVACH (Sarvam AI Sovereign Platform)
 
-SCAM CLASSIFICATION: ${scenario.name} (${scenario.category})
-CALLER IDENTIFIER: ${scenario.caller}
-THREAT CONFIDENCE SCORE: ${currentThreatScore}% (CRITICAL)
-TARGETED VULNERABILITY: ${scenario.targeted_vulnerability}
+INCIDENT TYPE: ${scenario.name} (${scenario.category})
+CALLER: ${scenario.caller}
+CLAIMED ROLE: ${scenario.scammer_role}
+THREAT SCORE: ${currentThreatScore}% (CRITICAL FRAUD)
 
-SENSITIVE CREDENTIALS TARGETED:
-${scenario.sensitive_data_targeted.map((item) => `• ${item}`).join("\n")}
+ANALYSIS IN SIMPLE LANGUAGE:
+${scenario.simple_explanation}
 
-FORENSIC SPEECH TRANSCRIPT (Sarvam Saaras:v4 STT):
+TRANSCRIPT (Transcribed by Sarvam Saaras:v4 STT):
 "${currentTranscript}"
 
-STATUTORY LEGAL FINDINGS (BNSS 2023 & RBI Directives):
+CITIZEN SAFETY ADVICE (Synthesized via Sarvam Bulbul:v4):
 ${scenario.whisper_advice}
 `;
     navigator.clipboard.writeText(report);
@@ -335,11 +327,11 @@ ${scenario.whisper_advice}
                 </span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Active Interceptor
+                  Active Shield
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Autonomous Indic Voice Shield Protecting Citizens from Financial Fraud
+                भारतीय नागरिकों के लिए आवाज-आधारित वित्तीय सुरक्षा गार्ड (Powered by Sarvam AI)
               </p>
             </div>
           </div>
@@ -350,7 +342,7 @@ ${scenario.whisper_advice}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
             >
               <Settings2 className="w-3.5 h-3.5 text-slate-500" />
-              Privacy Controls
+              Privacy Safeguards
             </button>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
               <Radio className="w-3 h-3 text-emerald-600" /> Saaras:v4
@@ -365,54 +357,54 @@ ${scenario.whisper_advice}
         </div>
       </header>
 
-      {/* Main Focus Area */}
+      {/* Main Container */}
       <div className="max-w-4xl mx-auto px-6 py-8 w-full space-y-6">
-        {/* Privacy by Design Banner (Collapsible / Toggleable) */}
+        {/* Privacy Controls Panel (Collapsible) */}
         {showPrivacySettings && (
           <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                 <Lock className="w-4 h-4 text-emerald-600" />
-                Privacy by Design & DPDP Act 2023 Safeguards
+                प्राइवेसी सुरक्षा नियम (DPDP Act 2023)
               </span>
               <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Zero Cloud Storage of Private Audio
+                निजी कॉल कभी रिकॉर्ड नहीं होती
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <div className="flex items-center justify-between font-bold text-slate-900">
-                  <span>📱 Saved Phonebook Contacts</span>
-                  <span className="text-emerald-700 font-mono">100% Dormant</span>
+                  <span>📱 सेव्ड कॉन्टैक्ट्स (परिवार/दोस्त)</span>
+                  <span className="text-emerald-700 font-mono font-bold">100% बंद (Dormant)</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Calls from saved family/friends are NEVER processed or sent to AI. Listener remains completely OFF.
+                  घर, परिवार या दोस्तों के कॉल पर AI पूरी तरह बंद रहता है। ऑडियो कभी सर्वर पर नहीं जाता।
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <div className="flex items-center justify-between font-bold text-slate-900">
-                  <span>🏛️ Official Institutional Directory</span>
-                  <span className="text-blue-700 font-mono">Verified DB</span>
+                  <span>🛑 कॉल के दौरान रोकने का बटन</span>
+                  <span className="text-blue-700 font-mono font-bold">In-Call Kill Switch</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Cross-checks inbound numbers against certified TRAI & banking registry to detect spoofed SIP trunks.
+                  कॉल चालू रहने पर भी यूजर जब चाहे "Mute AI" दबाकर AI को सुनना तुरंत बंद कर सकता है।
                 </p>
               </div>
             </div>
           </section>
         )}
 
-        {/* Scam Archetype Category Selector */}
+        {/* 4 Major Fraud Archetypes Selector */}
         <section className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
           <div className="flex items-center justify-between mb-2.5">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              Covering All Major Indian Financial Voice Scams
+              प्रमुख भारतीय फ्रॉड कॉल के प्रकार (Choose Scam to Test)
             </span>
             <span className="text-xs text-slate-400 font-medium">
-              Only activates on unsaved/unknown calls
+              अनजान नंबर आने पर AI ऐसे पहचानता है
             </span>
           </div>
 
@@ -428,7 +420,7 @@ ${scenario.whisper_advice}
                 }}
                 className={`p-2.5 text-left rounded-xl border transition ${
                   selectedScenarioKey === item.id
-                    ? "border-emerald-500 bg-emerald-50/50 text-emerald-950 font-bold shadow-2xs"
+                    ? "border-emerald-500 bg-emerald-50/60 text-emerald-950 font-bold shadow-2xs"
                     : "border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100"
                 }`}
               >
@@ -463,11 +455,11 @@ ${scenario.whisper_advice}
                     {scenario.caller}
                   </span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
-                    Unsaved Number • AI Active
+                    अनजान कॉलर • AI सतर्क
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Targeted Weakness: <span className="font-medium text-slate-700">{scenario.targeted_vulnerability}</span>
+                  कॉलर का दावा: <span className="font-semibold text-slate-800">{scenario.scammer_role}</span>
                 </p>
               </div>
             </div>
@@ -486,14 +478,14 @@ ${scenario.whisper_advice}
                     }`}
                   >
                     <EyeOff className="w-4 h-4" />
-                    {isAiListeningMuted ? "AI Resumed (Tap to Mute)" : "Mute AI (Stop Listening)"}
+                    {isAiListeningMuted ? "AI चालू करें" : "Mute AI (सुनना बंद करें)"}
                   </button>
 
                   <button
                     onClick={handleEndCall}
                     className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition"
                   >
-                    <PhoneOff className="w-4 h-4 text-rose-400" /> End Call
+                    <PhoneOff className="w-4 h-4 text-rose-400" /> फोन काटें
                   </button>
                 </>
               ) : (
@@ -501,7 +493,7 @@ ${scenario.whisper_advice}
                   onClick={handleStartCall}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs hover:shadow transition"
                 >
-                  <Play className="w-4 h-4 fill-white" /> Simulate & Play Fraud Call
+                  <Play className="w-4 h-4 fill-white" /> फ्रॉड कॉल सुनें (Listen to Scammer Voice)
                 </button>
               )}
 
@@ -511,7 +503,7 @@ ${scenario.whisper_advice}
                   onClick={stopRecording}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold animate-pulse shadow-xs transition"
                 >
-                  <Square className="w-3.5 h-3.5 fill-white" /> Stop Mic ({recordTimer}s)
+                  <Square className="w-3.5 h-3.5 fill-white" /> रिकॉर्डिंग रोकें ({recordTimer}s)
                 </button>
               ) : (
                 <button
@@ -520,27 +512,27 @@ ${scenario.whisper_advice}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-2xs transition"
                 >
                   <Mic className="w-3.5 h-3.5 text-slate-600" />
-                  {isProcessingMic ? "Transcribing..." : "Live Mic"}
+                  {isProcessingMic ? "पहचान रहा है..." : "खुद बोलकर टेस्ट करें"}
                 </button>
               )}
             </div>
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Live Audio Transcript Box */}
+            {/* Scammer Audio Playing Status */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span className="font-semibold flex items-center gap-1.5">
                   <Volume2 className="w-4 h-4 text-slate-400" />
-                  Live Audio Stream (Transcribed by Sarvam Saaras:v4)
+                  कॉलर की आवाज (Transcribed by Sarvam Saaras:v4)
                 </span>
                 {isAiListeningMuted ? (
                   <span className="flex items-center gap-1 text-amber-600 font-bold text-[11px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    <EyeOff className="w-3.5 h-3.5" /> AI Listening Paused by User
+                    <EyeOff className="w-3.5 h-3.5" /> AI को रोका गया है (प्राइवेसी मोड)
                   </span>
-                ) : playingAudio === "scam_call" ? (
-                  <span className="flex items-center gap-1 text-rose-600 font-semibold animate-pulse text-[11px]">
-                    <span className="w-2 h-2 rounded-full bg-rose-600"></span> Audio Streaming
+                ) : playingAudio === "scam_caller" ? (
+                  <span className="flex items-center gap-1 text-rose-600 font-bold animate-pulse text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-rose-600"></span> स्कैमर की आवाज चल रही है...
                   </span>
                 ) : null}
               </div>
@@ -551,33 +543,30 @@ ${scenario.whisper_advice}
                   : "bg-slate-50/80 border-slate-200/80 text-slate-800"
               }`}>
                 {isAiListeningMuted
-                  ? "[AI Listening Paused by User — Audio stream is not being captured or transcribed]"
+                  ? "[AI को यूजर ने म्यूट किया हुआ है — आवाज न सुनी जा रही है न रिकॉर्ड हो रही है]"
                   : `"${currentTranscript}"`}
               </div>
             </div>
 
-            {/* Forensic Detection Indicators */}
-            <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white shrink-0 shadow-xs">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-rose-950">
-                      HOW WE DETECTED: {currentThreatScore}% FRAUD CONFIDENCE
+            {/* Simple Explanation for Common Citizens */}
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
+                  आम नागरिक के लिए सरल भाषा में चेतावनी:
+                </span>
+                <p className="text-xs text-amber-900 mt-0.5 leading-relaxed font-medium">
+                  {scenario.simple_explanation}
+                </p>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {scenario.detected_vectors.map((vec, i) => (
+                    <span
+                      key={i}
+                      className="text-[11px] font-medium px-2 py-0.5 rounded bg-white text-rose-900 border border-rose-200"
+                    >
+                      🚩 {vec}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {scenario.detected_vectors.map((vec, i) => (
-                      <span
-                        key={i}
-                        className="text-[11px] font-medium px-2 py-0.5 rounded bg-white text-rose-900 border border-rose-200 shadow-2xs"
-                      >
-                        🚩 {vec}
-                      </span>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -585,8 +574,8 @@ ${scenario.whisper_advice}
             {/* THE MULTI-TIER INTERVENTION SUITE */}
             <div className="space-y-3 pt-2">
               <div className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                <span>How We Intervene (4-Tier Active Intervention Engine)</span>
-                <span className="text-slate-400 font-normal">Autonomous Actions to Protect the Citizen</span>
+                <span>AI द्वारा नागरिक की सुरक्षा (Intervention Options)</span>
+                <span className="text-slate-400 font-normal">भारतीय भाषाओं में तत्काल सहायता</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -595,12 +584,12 @@ ${scenario.whisper_advice}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                        <Headphones className="w-3 h-3" /> TIER 1: IN-EAR WHISPER
+                        <Headphones className="w-3 h-3" /> सहायता 1: कान में धीमी आवाज में सलाह
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">Private Audio</span>
+                      <span className="text-[10px] text-slate-400 font-mono">Bulbul:v4-flash</span>
                     </div>
                     <h4 className="text-xs font-bold text-slate-900">
-                      Discreet In-Ear Audio Prompt to Victim
+                      नागरिक को उसकी भाषा में समझाइश
                     </h4>
                     <p className="text-xs text-slate-600 leading-snug">
                       "{scenario.whisper_advice}"
@@ -609,12 +598,12 @@ ${scenario.whisper_advice}
 
                   <button
                     onClick={() =>
-                      playAudio("/api/audio/warning.wav", "whisper", scenario.whisper_advice)
+                      playAudio("/api/audio/warning.wav", "whisper_alert", scenario.whisper_advice)
                     }
                     className="mt-3 w-full py-2 px-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-1.5 transition"
                   >
                     <Volume2 className="w-3.5 h-3.5" />
-                    {playingAudio === "whisper" ? "Pause In-Ear Audio" : "Listen to In-Ear Audio Guide (Bulbul:v4)"}
+                    {playingAudio === "whisper_alert" ? "रोकें" : "AI की सतर्कता आवाज सुनें (Bulbul:v4)"}
                   </button>
                 </div>
 
@@ -623,22 +612,22 @@ ${scenario.whisper_advice}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> TIER 2: CREDENTIAL SHIELD
+                        <Lock className="w-3 h-3" /> सहायता 2: OTP बोलने पर माइक बंद
                       </span>
-                      <span className="text-[10px] text-emerald-600 font-bold">Auto-Active</span>
+                      <span className="text-[10px] text-emerald-600 font-bold">Auto-Shield</span>
                     </div>
                     <h4 className="text-xs font-bold text-slate-900">
-                      Automatic Microphone Mute on Sensitive Data
+                      ओटीपी या पासवर्ड लीक होने से रोकना
                     </h4>
                     <p className="text-xs text-slate-600 leading-snug">
-                      If the citizen attempts to utter an OTP or PIN, KAVACH actively cuts off transmission to the scammer.
+                      अगर हड़बड़ाहट में यूजर OTP बोलने लगता है, तो KAVACH तुरंत माइक की आवाज स्कैमर तक जाने से रोक देता है।
                     </p>
                   </div>
 
                   <div className="mt-3 p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs text-slate-600 font-mono">
-                    <span>Targeted: {scenario.sensitive_data_targeted[0]}</span>
+                    <span>सुरक्षा स्थिति: बैंक OTP शील्ड</span>
                     <span className="text-emerald-700 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Blocked
+                      <CheckCircle2 className="w-3.5 h-3.5" /> एक्टिव
                     </span>
                   </div>
                 </div>
@@ -648,12 +637,12 @@ ${scenario.whisper_advice}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 flex items-center gap-1">
-                        <Bug className="w-3 h-3" /> TIER 3: HONEYPOT BAITER
+                        <Bug className="w-3 h-3" /> सहायता 3: AI द्वारा स्कैमर का समय बर्बाद
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">ashok_hi_character</span>
+                      <span className="text-[10px] text-slate-400 font-mono">बनारसी चाचा आवाज</span>
                     </div>
                     <h4 className="text-xs font-bold text-slate-900">
-                      AI Agent Steps In to Waste Scammer's Time
+                      स्कैमर का बैंक/UPI पता निकलवाना
                     </h4>
                     <p className="text-xs text-slate-600 leading-snug">
                       "{scenario.honeypot_dialogue}"
@@ -662,12 +651,12 @@ ${scenario.whisper_advice}
 
                   <button
                     onClick={() =>
-                      playAudio("/api/audio/honeypot.wav", "honeypot", scenario.honeypot_dialogue)
+                      playAudio("/api/audio/honeypot.wav", "honeypot_voice", scenario.honeypot_dialogue)
                     }
                     className="mt-3 w-full py-2 px-3 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 flex items-center justify-center gap-1.5 transition"
                   >
                     <Bug className="w-3.5 h-3.5" />
-                    {playingAudio === "honeypot" ? "Pause Honeypot" : "Deploy Banarasi Honeypot (Bulbul:v4)"}
+                    {playingAudio === "honeypot_voice" ? "रोकें" : "AI से स्कैमर को उलझाएं (Bulbul:v4)"}
                   </button>
                 </div>
 
@@ -676,15 +665,15 @@ ${scenario.whisper_advice}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 flex items-center gap-1">
-                        <Users className="w-3 h-3" /> TIER 4: FAMILY CIRCUIT-BREAKER
+                        <Users className="w-3 h-3" /> सहायता 4: परिवार को तुरंत अलर्ट
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">WhatsApp Alert</span>
+                      <span className="text-[10px] text-slate-400 font-mono">WhatsApp/SMS</span>
                     </div>
                     <h4 className="text-xs font-bold text-slate-900">
-                      Instant WhatsApp/SMS Alert to Family Member
+                      घर के बेटे/बेटी को कॉल का संदेश भेजना
                     </h4>
                     <p className="text-xs text-slate-600 leading-snug">
-                      Alerts caregiver/children: "⚠️ Father is currently on an active scam call demanding banking OTP."
+                      "सावधान: पिताजी के फोन पर अभी एक संदिग्ध कॉल चल रही है जिसमें OTP मांगा जा रहा है।"
                     </p>
                   </div>
 
@@ -693,7 +682,7 @@ ${scenario.whisper_advice}
                     className="mt-3 w-full py-2 px-3 rounded-xl text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 flex items-center justify-center gap-1.5 transition"
                   >
                     <Users className="w-3.5 h-3.5" />
-                    {familyAlertSent ? "✓ Emergency Alert Sent to Family!" : "Simulate Family Alert Dispatch"}
+                    {familyAlertSent ? "✓ परिवार को वॉट्सऐप मैसेज भेज दिया गया!" : "परिवार को अलर्ट भेजकर देखें"}
                   </button>
                 </div>
               </div>
@@ -706,7 +695,7 @@ ${scenario.whisper_advice}
                 className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition"
               >
                 <FileText className="w-4 h-4 text-slate-500" />
-                {showReport ? "Hide" : "View"} Pre-filled 1930 Cyber Crime Portal Report
+                {showReport ? "छिपाएं" : "देखें"} 1930 राष्ट्रीय साइबर क्राइम पोर्टल की शिकायत रिपोर्ट
               </button>
 
               <button
@@ -715,11 +704,11 @@ ${scenario.whisper_advice}
               >
                 {copied ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" /> Copied Official Dossier
+                    <Check className="w-3.5 h-3.5 text-emerald-600" /> रिपोर्ट कॉपी हो गई
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5 text-slate-500" /> Copy Incident Dossier
+                    <Copy className="w-3.5 h-3.5 text-slate-500" /> रिपोर्ट कॉपी करें
                   </>
                 )}
               </button>
@@ -728,30 +717,30 @@ ${scenario.whisper_advice}
             {showReport && (
               <div className="p-4 rounded-2xl bg-slate-900 text-slate-200 font-mono text-xs leading-relaxed space-y-2 border border-slate-800">
                 <div className="text-emerald-400 font-bold border-b border-slate-800 pb-1.5 flex justify-between">
-                  <span>// NATIONAL CYBER CRIME PORTAL (1930) - OFFICIAL COMPLAINT</span>
+                  <span>// NATIONAL CYBER CRIME PORTAL (1930) - FRAUD COMPLAINT</span>
                   <span>STATUS: EVIDENCE PACKAGED</span>
                 </div>
                 <div><span className="text-slate-400">INCIDENT TYPE:</span> {scenario.name} ({scenario.category})</div>
                 <div><span className="text-slate-400">SUSPECT NUMBER:</span> {scenario.caller}</div>
-                <div><span className="text-slate-400">TARGETED DATA:</span> {scenario.sensitive_data_targeted.join(", ")}</div>
+                <div><span className="text-slate-400">CLAIMED ROLE:</span> {scenario.scammer_role}</div>
                 <div><span className="text-slate-400">APPLICABLE LAWS:</span> BNS 318(4) (Cheating) • IT Act Section 66D • RBI Digital Safety Framework</div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Presentation Pitch Banner */}
+        {/* Pitch Banner */}
         <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
           <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <p className="text-xs text-emerald-950 leading-relaxed">
-            <span className="font-bold">Privacy Architecture (DPDP Act 2023):</span> Saved phonebook contacts are 100% dormant. AI only activates on unsaved numbers, with a physical in-call kill switch allowing the user to pause listening at any second.
+            <span className="font-bold">सॉवरेन भारतीय मिशन:</span> गैर-अंग्रेजी भाषी आम नागरिकों को साइबर और बैंक फ्रॉड से बचाना। AI अनजान कॉल पर खुद पहचान करता है और नागरिक के कान में उसकी मातृभाषा में सुरक्षा सलाह देता है।
           </p>
         </div>
       </div>
 
       {/* Footer */}
       <footer className="border-t border-slate-200/80 bg-white py-4 text-center text-xs text-slate-500">
-        KAVACH | Complete Financial Fraud Voice Shield Powered by Sarvam AI
+        KAVACH | Powered strictly by Sarvam AI: Saaras:v4 • Sarvam-105B • Bulbul:v4-flash
       </footer>
     </main>
   );
