@@ -93,9 +93,11 @@ Output valid JSON with:
           const chatData = await chatRes.json();
           let rawContent = chatData.choices[0]?.message?.content || "";
           if (rawContent.includes("```json")) {
-            rawContent = rawContent.split("```json")[1].split("```")[0].strip();
+            rawContent = rawContent.split("```json")[1].split("```")[0].trim();
           } else if (rawContent.includes("```")) {
-            rawContent = rawContent.split("```")[1].split("```")[0].strip();
+            rawContent = rawContent.split("```")[1].split("```")[0].trim();
+          } else {
+            rawContent = rawContent.trim();
           }
           analysis = JSON.parse(rawContent);
         }

@@ -8,7 +8,10 @@ export async function GET(
 ) {
   try {
     const filename = params.filename;
-    const filePath = path.join(process.cwd(), "public", filename);
+    let filePath = path.join(process.cwd(), "public", filename);
+    if (!fs.existsSync(filePath)) {
+      filePath = path.join(process.cwd(), "frontend", "public", filename);
+    }
 
     if (!fs.existsSync(filePath)) {
       return new NextResponse(`Audio file not found: ${filename}`, { status: 404 });
