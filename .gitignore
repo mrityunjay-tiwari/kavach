@@ -2,10 +2,6 @@
 *.env
 .env.local
 *.env.local
-__pycache__/
 node_modules/
 .next/
 dist/
-venv/
-.venv/
-sample_warning.wav
