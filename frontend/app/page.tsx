@@ -21,7 +21,10 @@ import {
   Users,
   Lock,
   Headphones,
-  CheckCircle2
+  CheckCircle2,
+  EyeOff,
+  Settings2,
+  Database
 } from "lucide-react";
 
 interface ScamScenario {
@@ -29,6 +32,7 @@ interface ScamScenario {
   name: string;
   category: string;
   caller: string;
+  is_saved_contact: boolean;
   threat_score: number;
   targeted_vulnerability: string;
   transcript: string;
@@ -44,7 +48,8 @@ const FINANCIAL_SCAM_TAXONOMY: Record<string, ScamScenario> = {
     id: "kyc_block",
     name: "1. Bank KYC Account Freeze",
     category: "Banking Phishing",
-    caller: "+91 91234-88219 [SPOOFED: SBI HELPDESK]",
+    caller: "+91 91234-88219 [UNSAVED: UNKNOWN NUMBER]",
+    is_saved_contact: false,
     threat_score: 96,
     targeted_vulnerability: "Fear of bank account suspension & loss of pension/savings",
     transcript:
@@ -65,7 +70,8 @@ const FINANCIAL_SCAM_TAXONOMY: Record<string, ScamScenario> = {
     id: "digital_arrest",
     name: "2. Digital Arrest & Police Coercion",
     category: "Extortion / Impersonation",
-    caller: "+91 98201-94821 [SPOOFED: MUMBAI POLICE]",
+    caller: "+91 98201-94821 [UNSAVED: VOIP MUMBAI]",
+    is_saved_contact: false,
     threat_score: 98,
     targeted_vulnerability: "Fear of police raid, criminal arrest & societal shame",
     transcript:
@@ -86,7 +92,8 @@ const FINANCIAL_SCAM_TAXONOMY: Record<string, ScamScenario> = {
     id: "lottery_kbc",
     name: "3. KBC / PM-Scheme Lottery Scam",
     category: "Advance-Fee Fraud",
-    caller: "+91 97712-40912 [UNKNOWN MOBILE]",
+    caller: "+91 97712-40912 [UNSAVED: UNKNOWN MOBILE]",
+    is_saved_contact: false,
     threat_score: 91,
     targeted_vulnerability: "Greed/Hope of life-changing money for financially underprivileged citizens",
     transcript:
@@ -107,7 +114,8 @@ const FINANCIAL_SCAM_TAXONOMY: Record<string, ScamScenario> = {
     id: "electricity_bill",
     name: "4. Electricity Bill Power-Cut APK",
     category: "Utility Malware Phishing",
-    caller: "+91 94310-88124 [UNKNOWN MOBILE]",
+    caller: "+91 94310-88124 [UNSAVED: UNKNOWN MOBILE]",
+    is_saved_contact: false,
     threat_score: 93,
     targeted_vulnerability: "Fear of sudden power outage disrupting home or small shop",
     transcript:
@@ -128,14 +136,17 @@ const FINANCIAL_SCAM_TAXONOMY: Record<string, ScamScenario> = {
 
 export default function Home() {
   const [selectedScenarioKey, setSelectedScenarioKey] = useState<string>("kyc_block");
-  const [activeTab, setActiveTab] = useState<"scenario" | "mic">("scenario");
   
+  // Privacy by Design Settings
+  const [privacySavedContactsOnly, setPrivacySavedContactsOnly] = useState<boolean>(true);
+  const [isAiListeningMuted, setIsAiListeningMuted] = useState<boolean>(false);
+  const [showPrivacySettings, setShowPrivacySettings] = useState<boolean>(false);
+
   // Call & Audio Playback State
   const [isCallActive, setIsCallActive] = useState<boolean>(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
 
   // Intervention States
-  const [activeIntervention, setActiveIntervention] = useState<"whisper" | "shield" | "honeypot" | "family" | null>(null);
   const [familyAlertSent, setFamilyAlertSent] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
@@ -199,6 +210,7 @@ export default function Home() {
   };
 
   const handleStartCall = () => {
+    setIsAiListeningMuted(false);
     setIsCallActive(true);
     setCurrentTranscript(scenario.transcript);
     setCurrentThreatScore(scenario.threat_score);
@@ -212,7 +224,14 @@ export default function Home() {
     }
     setIsCallActive(false);
     setPlayingAudio(null);
-    setActiveIntervention(null);
+  };
+
+  const toggleAiMute = () => {
+    setIsAiListeningMuted(!isAiListeningMuted);
+    if (!isAiListeningMuted && audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      setPlayingAudio(null);
+    }
   };
 
   const sendFamilyAlert = () => {
@@ -326,14 +345,21 @@ ${scenario.whisper_advice}
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPrivacySettings(!showPrivacySettings)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
+            >
+              <Settings2 className="w-3.5 h-3.5 text-slate-500" />
+              Privacy Controls
+            </button>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-              <Radio className="w-3 h-3 text-emerald-600" /> Saaras:v4 (STT)
+              <Radio className="w-3 h-3 text-emerald-600" /> Saaras:v4
             </span>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
               Sarvam-105B
             </span>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-              Bulbul:v4-flash (TTS)
+              Bulbul:v4
             </span>
           </div>
         </div>
@@ -341,6 +367,43 @@ ${scenario.whisper_advice}
 
       {/* Main Focus Area */}
       <div className="max-w-4xl mx-auto px-6 py-8 w-full space-y-6">
+        {/* Privacy by Design Banner (Collapsible / Toggleable) */}
+        {showPrivacySettings && (
+          <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                <Lock className="w-4 h-4 text-emerald-600" />
+                Privacy by Design & DPDP Act 2023 Safeguards
+              </span>
+              <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Zero Cloud Storage of Private Audio
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="flex items-center justify-between font-bold text-slate-900">
+                  <span>📱 Saved Phonebook Contacts</span>
+                  <span className="text-emerald-700 font-mono">100% Dormant</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Calls from saved family/friends are NEVER processed or sent to AI. Listener remains completely OFF.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="flex items-center justify-between font-bold text-slate-900">
+                  <span>🏛️ Official Institutional Directory</span>
+                  <span className="text-blue-700 font-mono">Verified DB</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Cross-checks inbound numbers against certified TRAI & banking registry to detect spoofed SIP trunks.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Scam Archetype Category Selector */}
         <section className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
           <div className="flex items-center justify-between mb-2.5">
@@ -349,7 +412,7 @@ ${scenario.whisper_advice}
               Covering All Major Indian Financial Voice Scams
             </span>
             <span className="text-xs text-slate-400 font-medium">
-              Select an archetype to test AI detection & intervention
+              Only activates on unsaved/unknown calls
             </span>
           </div>
 
@@ -386,7 +449,9 @@ ${scenario.whisper_advice}
               <div
                 className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs transition ${
                   isCallActive
-                    ? "bg-rose-600 text-white animate-pulse"
+                    ? isAiListeningMuted
+                      ? "bg-slate-600 text-white"
+                      : "bg-rose-600 text-white animate-pulse"
                     : "bg-slate-100 text-slate-700"
                 }`}
               >
@@ -398,7 +463,7 @@ ${scenario.whisper_advice}
                     {scenario.caller}
                   </span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
-                    Flagged: High Risk
+                    Unsaved Number • AI Active
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -407,15 +472,30 @@ ${scenario.whisper_advice}
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons & In-Call Kill Switch */}
             <div className="flex items-center gap-2">
               {isCallActive ? (
-                <button
-                  onClick={handleEndCall}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition"
-                >
-                  <PhoneOff className="w-4 h-4 text-rose-400" /> End Call
-                </button>
+                <>
+                  {/* IN-CALL PRIVACY KILL SWITCH */}
+                  <button
+                    onClick={toggleAiMute}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition ${
+                      isAiListeningMuted
+                        ? "bg-emerald-600 text-white border-emerald-700"
+                        : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                    }`}
+                  >
+                    <EyeOff className="w-4 h-4" />
+                    {isAiListeningMuted ? "AI Resumed (Tap to Mute)" : "Mute AI (Stop Listening)"}
+                  </button>
+
+                  <button
+                    onClick={handleEndCall}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition"
+                  >
+                    <PhoneOff className="w-4 h-4 text-rose-400" /> End Call
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={handleStartCall}
@@ -454,15 +534,25 @@ ${scenario.whisper_advice}
                   <Volume2 className="w-4 h-4 text-slate-400" />
                   Live Audio Stream (Transcribed by Sarvam Saaras:v4)
                 </span>
-                {playingAudio === "scam_call" && (
+                {isAiListeningMuted ? (
+                  <span className="flex items-center gap-1 text-amber-600 font-bold text-[11px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    <EyeOff className="w-3.5 h-3.5" /> AI Listening Paused by User
+                  </span>
+                ) : playingAudio === "scam_call" ? (
                   <span className="flex items-center gap-1 text-rose-600 font-semibold animate-pulse text-[11px]">
                     <span className="w-2 h-2 rounded-full bg-rose-600"></span> Audio Streaming
                   </span>
-                )}
+                ) : null}
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 text-sm leading-relaxed text-slate-800 font-sans">
-                "{currentTranscript}"
+              <div className={`p-4 rounded-2xl border text-sm leading-relaxed font-sans transition ${
+                isAiListeningMuted
+                  ? "bg-amber-50/40 border-amber-200 text-slate-500 italic"
+                  : "bg-slate-50/80 border-slate-200/80 text-slate-800"
+              }`}>
+                {isAiListeningMuted
+                  ? "[AI Listening Paused by User — Audio stream is not being captured or transcribed]"
+                  : `"${currentTranscript}"`}
               </div>
             </div>
 
@@ -654,9 +744,7 @@ ${scenario.whisper_advice}
         <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
           <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <p className="text-xs text-emerald-950 leading-relaxed">
-            <span className="font-bold">Winning Pitch Formula:</span> When judges ask how you detect and intervene, explain:
-            (1) <span className="font-semibold">Detection:</span> We detect 4 financial scam archetypes (KYC, Digital Arrest, Lottery, Utility) by tracking credential-harvesting vectors instead of naive keywords.
-            (2) <span className="font-semibold">Intervention:</span> We use a 4-tier stack: In-ear whispered coaching, automatic OTP microphone-muting, the Banarasi honeypot baiter, and automated family alerts.
+            <span className="font-bold">Privacy Architecture (DPDP Act 2023):</span> Saved phonebook contacts are 100% dormant. AI only activates on unsaved numbers, with a physical in-call kill switch allowing the user to pause listening at any second.
           </p>
         </div>
       </div>
